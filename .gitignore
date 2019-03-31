@@ -10,6 +10,7 @@ ehthumbs.db
 Icon?
 Thumbs.db
 
+.cache
 .sass-cache
 Rakefile
 rsync-exclude

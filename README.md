@@ -1,13 +1,11 @@
 # Color Thief
 
-A script for grabbing the color palette from an image. Uses Javascript and the canvas tag to make it happen.
-
-[See a Demo](http://lokeshdhakar.com/projects/color-thief) | [Read more on my blog](http://lokeshdhakar.com/color-thief)
-
+Finds the color palette used in an image.
 
 ## How to use
 
 ### Get the dominant color from an image
+
 ```js
 var colorThief = new ColorThief();
 colorThief.getColor(sourceImage);
@@ -31,3 +29,13 @@ colorThief.getPalette(sourceImage, 8);
 getPalette(sourceImage[, colorCount, quality])
 returns [ [num, num, num], [num, num, num], ... ]
 ```
+
+## Development
+
+### Deploy
+
+Make sure you have [parcel](https://github.com/parcel-bundler/parcel) installed:
+
+- Run `yarn run build`
+- Push to Github repo
+- Create a new Github release along with tag. Naming convention for both ```v2.8.1```

@@ -17,172 +17,173 @@
  * @license
  */
 
-
 /*
   CanvasImage Class
   Class that wraps the html image element and canvas.
   It also simplifies some of the canvas context manipulation
   with a set of helper functions.
 */
-var CanvasImage = function (image) {
-    this.canvas  = document.createElement('canvas');
-    this.context = this.canvas.getContext('2d');
-
-    document.body.appendChild(this.canvas);
-
-    this.width  = this.canvas.width  = image.width;
-    this.height = this.canvas.height = image.height;
-
-    this.context.drawImage(image, 0, 0, this.width, this.height);
-};
-
-CanvasImage.prototype.clear = function () {
-    this.context.clearRect(0, 0, this.width, this.height);
-};
-
-CanvasImage.prototype.update = function (imageData) {
-    this.context.putImageData(imageData, 0, 0);
-};
-
-CanvasImage.prototype.getPixelCount = function () {
-    return this.width * this.height;
-};
-
-CanvasImage.prototype.getImageData = function () {
-    return this.context.getImageData(0, 0, this.width, this.height);
-};
-
-CanvasImage.prototype.removeCanvas = function () {
-    this.canvas.parentNode.removeChild(this.canvas);
-};
-
-
-var ColorThief = function () {};
-
-/*
- * getColor(sourceImage[, quality])
- * returns {r: num, g: num, b: num}
- *
- * Use the median cut algorithm provided by quantize.js to cluster similar
- * colors and return the base color from the largest cluster.
- *
- * Quality is an optional argument. It needs to be an integer. 1 is the highest quality settings.
- * 10 is the default. There is a trade-off between quality and speed. The bigger the number, the
- * faster a color will be returned but the greater the likelihood that it will not be the visually
- * most dominant color.
- *
- * */
-ColorThief.prototype.getColor = function(sourceImage, quality) {
-    var palette       = this.getPalette(sourceImage, 5, quality);
-    var dominantColor = palette[0];
-    return dominantColor;
-};
-
-
-/*
- * getPalette(sourceImage[, colorCount, quality])
- * returns array[ {r: num, g: num, b: num}, {r: num, g: num, b: num}, ...]
- *
- * Use the median cut algorithm provided by quantize.js to cluster similar colors.
- *
- * colorCount determines the size of the palette; the number of colors returned. If not set, it
- * defaults to 10.
- *
- * BUGGY: Function does not always return the requested amount of colors. It can be +/- 2.
- *
- * quality is an optional argument. It needs to be an integer. 1 is the highest quality settings.
- * 10 is the default. There is a trade-off between quality and speed. The bigger the number, the
- * faster the palette generation but the greater the likelihood that colors will be missed.
- *
- *
- */
-ColorThief.prototype.getPalette = function(sourceImage, colorCount, quality) {
-
-    if (typeof colorCount === 'undefined' || colorCount < 2 || colorCount > 256) {
-        colorCount = 10;
-    }
-    if (typeof quality === 'undefined' || quality < 1) {
-        quality = 10;
+class CanvasImage {
+    constructor(image) {
+        this.canvas = document.createElement("canvas");
+        this.context = this.canvas.getContext("2d");
+        document.body.appendChild(this.canvas);
+        this.width = this.canvas.width = image.width;
+        this.height = this.canvas.height = image.height;
+        this.context.drawImage(image, 0, 0, this.width, this.height);
     }
 
-    // Create custom CanvasImage object
-    var image      = new CanvasImage(sourceImage);
-    var imageData  = image.getImageData();
-    var pixels     = imageData.data;
-    var pixelCount = image.getPixelCount();
-
-    // Store the RGB values in an array format suitable for quantize function
-    var pixelArray = [];
-    for (var i = 0, offset, r, g, b, a; i < pixelCount; i = i + quality) {
-        offset = i * 4;
-        r = pixels[offset + 0];
-        g = pixels[offset + 1];
-        b = pixels[offset + 2];
-        a = pixels[offset + 3];
-        // If pixel is mostly opaque and not white
-        if (a >= 125) {
-            if (!(r > 250 && g > 250 && b > 250)) {
-                pixelArray.push([r, g, b]);
-            }
-        }
+    clear() {
+        this.context.clearRect(0, 0, this.width, this.height);
     }
 
-    // Send array to quantize function which clusters values
-    // using median cut algorithm
-    var cmap    = MMCQ.quantize(pixelArray, colorCount);
-    var palette = cmap? cmap.palette() : null;
+    update(imageData) {
+        this.context.putImageData(imageData, 0, 0);
+    }
 
-    // Clean up
-    image.removeCanvas();
+    getPixelCount() {
+        return this.width * this.height;
+    }
 
-    return palette;
-};
+    getImageData() {
+        return this.context.getImageData(0, 0, this.width, this.height);
+    }
 
-ColorThief.prototype.getColorFromUrl = function(imageUrl, callback, quality) {
-    sourceImage = document.createElement("img");
-    var thief = this;
-    sourceImage.addEventListener('load' , function(){
-        var palette = thief.getPalette(sourceImage, 5, quality);
+    removeCanvas() {
+        this.canvas.parentNode.removeChild(this.canvas);
+    }
+}
+
+class ColorThief {
+    constructor() {
+        console.count("COLOR THIEF")
+    }
+
+    /*
+     * getColor(sourceImage[, quality])
+     * returns {r: num, g: num, b: num}
+     *
+     * Use the median cut algorithm provided by quantize.js to cluster similar
+     * colors and return the base color from the largest cluster.
+     *
+     * Quality is an optional argument. It needs to be an integer. 1 is the highest quality settings.
+     * 10 is the default. There is a trade-off between quality and speed. The bigger the number, the
+     * faster a color will be returned but the greater the likelihood that it will not be the visually
+     * most dominant color.
+     *
+     */
+    getColor(sourceImage, quality) {
+        var palette = this.getPalette(sourceImage, 5, quality);
         var dominantColor = palette[0];
-        callback(dominantColor, imageUrl);
-    });
-    sourceImage.src = imageUrl
-};
-
-
-ColorThief.prototype.getImageData = function(imageUrl, callback) {
-    xhr = new XMLHttpRequest();
-    xhr.open('GET', imageUrl, true);
-    xhr.responseType = 'arraybuffer'
-    xhr.onload = function(e) {
-        if (this.status == 200) {
-            uInt8Array = new Uint8Array(this.response)
-            i = uInt8Array.length
-            binaryString = new Array(i);
-            for (var i = 0; i < uInt8Array.length; i++){
-                binaryString[i] = String.fromCharCode(uInt8Array[i])
-            }
-            data = binaryString.join('')
-            base64 = window.btoa(data)
-            callback ("data:image/png;base64,"+base64)
-        }
+        return dominantColor;
     }
-    xhr.send();
-};
 
-ColorThief.prototype.getColorAsync = function(imageUrl, callback, quality) {
-    var thief = this;
-    this.getImageData(imageUrl, function(imageData){
+    /*
+     * getPalette(sourceImage[, colorCount, quality])
+     * returns array[ {r: num, g: num, b: num}, {r: num, g: num, b: num}, ...]
+     *
+     * Use the median cut algorithm provided by quantize.js to cluster similar colors.
+     *
+     * colorCount determines the size of the palette; the number of colors returned. If not set, it
+     * defaults to 10.
+     *
+     * BUGGY: Function does not always return the requested amount of colors. It can be +/- 2.
+     *
+     * quality is an optional argument. It needs to be an integer. 1 is the highest quality settings.
+     * 10 is the default. There is a trade-off between quality and speed. The bigger the number, the
+     * faster the palette generation but the greater the likelihood that colors will be missed.
+     *
+     */
+    getPalette(sourceImage, colorCount, quality) {
+        if (typeof colorCount === "undefined" || colorCount < 2 || colorCount > 256) {
+            colorCount = 10;
+        }
+
+        if (typeof quality === "undefined" || quality < 1) {
+            quality = 10;
+        }
+
+        // Create custom CanvasImage object
+        var image = new CanvasImage(sourceImage);
+        var imageData = image.getImageData();
+        var pixels = imageData.data;
+        var pixelCount = image.getPixelCount();
+
+        // Store the RGB values in an array format suitable for quantize function
+        var pixelArray = [];
+
+        for (var i = 0, offset, r, g, b, a; i < pixelCount; i = i + quality) {
+            offset = i * 4;
+            r = pixels[offset + 0];
+            g = pixels[offset + 1];
+            b = pixels[offset + 2];
+            a = pixels[offset + 3];
+
+            // If pixel is mostly opaque and not white
+            if (a >= 125) {
+                if (!(r > 250 && g > 250 && b > 250)) {
+                    pixelArray.push([r, g, b]);
+                }
+            }
+        }
+
+        // Send array to quantize function which clusters values
+        // using median cut algorithm
+        var cmap = MMCQ.quantize(pixelArray, colorCount);
+        var palette = cmap ? cmap.palette() : null;
+
+        image.removeCanvas();
+
+        return palette;
+    }
+
+    getColorFromUrl(imageUrl, callback, quality) {
         sourceImage = document.createElement("img");
-        sourceImage.addEventListener('load' , function(){
-            var palette = thief.getPalette(sourceImage, 5, quality);
-            var dominantColor = palette[0];
-            callback(dominantColor, this);
-        });
-        sourceImage.src = imageData;      
-    });
-};
+        var thief = this;
 
+        sourceImage.addEventListener("load", function () {
+            var palette = thief.getPalette(sourceImage, 5, quality);
+
+            callback(palette, imageUrl);
+        });
+
+        sourceImage.src = imageUrl;
+    }
+
+    getImageData(imageUrl, callback) {
+        xhr = new XMLHttpRequest();
+        xhr.open("GET", imageUrl, true);
+        xhr.responseType = "arraybuffer";
+        xhr.onload = function (e) {
+            if (this.status == 200) {
+                uInt8Array = new Uint8Array(this.response);
+                i = uInt8Array.length;
+                binaryString = new Array(i);
+                for (var i = 0; i < uInt8Array.length; i++) {
+                    binaryString[i] = String.fromCharCode(uInt8Array[i]);
+                }
+                data = binaryString.join("");
+                base64 = window.btoa(data);
+                callback("data:image/png;base64," + base64);
+            }
+        };
+
+        xhr.send();
+    }
+
+    getColorAsync(imageUrl, callback, quality) {
+        var thief = this;
+        this.getImageData(imageUrl, function (imageData) {
+            sourceImage = document.createElement("img");
+            sourceImage.addEventListener("load", function () {
+                var palette = thief.getPalette(sourceImage, 5, quality);
+                var dominantColor = palette[0];
+                callback(dominantColor, this);
+            });
+            sourceImage.src = imageData;
+        });
+    }
+}
 
 
 /*!
@@ -191,7 +192,6 @@ ColorThief.prototype.getColorAsync = function(imageUrl, callback, quality) {
  * @license
  */
 
-// fill out a couple protovis dependencies
 /*!
  * Block below copied from Protovis: http://mbostock.github.com/protovis/
  * Copyright 2010 Stanford Visualization Group
@@ -239,10 +239,9 @@ var newPalette = cmap.palette();
 var newPixels = myPixels.map(function(p) {
     return cmap.map(p);
 });
-
  */
+
 var MMCQ = (function() {
-    // private constants
     var sigbits = 5,
         rshift = 8 - sigbits,
         maxIterations = 1000,
@@ -301,6 +300,7 @@ var MMCQ = (function() {
         vbox.b2 = b2;
         vbox.histo = histo;
     }
+
     VBox.prototype = {
         volume: function(force) {
             var vbox = this;
@@ -358,7 +358,6 @@ var MMCQ = (function() {
                 if (ntot) {
                     vbox._avg = [~~(rsum/ntot), ~~(gsum/ntot), ~~(bsum/ntot)];
                 } else {
-//                    console.log('empty box');
                     vbox._avg = [
                         ~~(mult * (vbox.r1 + vbox.r2 + 1) / 2),
                         ~~(mult * (vbox.g1 + vbox.g2 + 1) / 2),
@@ -388,6 +387,7 @@ var MMCQ = (function() {
             );
         });
     }
+
     CMap.prototype = {
         push: function(vbox) {
             this.vboxes.push({
@@ -427,18 +427,20 @@ var MMCQ = (function() {
             return pColor;
         },
         forcebw: function() {
-            // XXX: won't  work yet
             var vboxes = this.vboxes;
+
             vboxes.sort(function(a,b) { return pv.naturalOrder(pv.sum(a.color), pv.sum(b.color));});
 
             // force darkest color to black if everything < 5
             var lowest = vboxes[0].color;
+
             if (lowest[0] < 5 && lowest[1] < 5 && lowest[2] < 5)
                 vboxes[0].color = [0,0,0];
 
             // force lightest color to white if everything > 251
             var idx = vboxes.length-1,
                 highest = vboxes[idx].color;
+
             if (highest[0] > 251 && highest[1] > 251 && highest[2] > 251)
                 vboxes[idx].color = [255,255,255];
         }
@@ -450,6 +452,7 @@ var MMCQ = (function() {
         var histosize = 1 << (3 * sigbits),
             histo = new Array(histosize),
             index, rval, gval, bval;
+
         pixels.forEach(function(pixel) {
             rval = pixel[0] >> rshift;
             gval = pixel[1] >> rshift;
@@ -457,6 +460,7 @@ var MMCQ = (function() {
             index = getColorIndex(rval, gval, bval);
             histo[index] = (histo[index] || 0) + 1;
         });
+
         return histo;
     }
 
@@ -465,6 +469,7 @@ var MMCQ = (function() {
             gmin=1000000, gmax=0,
             bmin=1000000, bmax=0,
             rval, gval, bval;
+
         // find min/max
         pixels.forEach(function(pixel) {
             rval = pixel[0] >> rshift;
@@ -487,15 +492,18 @@ var MMCQ = (function() {
             gw = vbox.g2 - vbox.g1 + 1,
             bw = vbox.b2 - vbox.b1 + 1,
             maxw = pv.max([rw, gw, bw]);
+
         // only one pixel, no split
         if (vbox.count() == 1) {
             return [vbox.copy()];
         }
+
         /* Find the partial sum arrays along the selected axis. */
         var total = 0,
             partialsum = [],
             lookaheadsum = [],
             i, j, k, sum, index;
+
         if (maxw == rw) {
             for (i = vbox.r1; i <= vbox.r2; i++) {
                 sum = 0;
@@ -512,12 +520,14 @@ var MMCQ = (function() {
         else if (maxw == gw) {
             for (i = vbox.g1; i <= vbox.g2; i++) {
                 sum = 0;
+
                 for (j = vbox.r1; j <= vbox.r2; j++) {
                     for (k = vbox.b1; k <= vbox.b2; k++) {
                         index = getColorIndex(j,i,k);
                         sum += (histo[index] || 0);
                     }
                 }
+
                 total += sum;
                 partialsum[i] = total;
             }
@@ -525,12 +535,14 @@ var MMCQ = (function() {
         else {  /* maxw == bw */
             for (i = vbox.b1; i <= vbox.b2; i++) {
                 sum = 0;
+
                 for (j = vbox.r1; j <= vbox.r2; j++) {
                     for (k = vbox.g1; k <= vbox.g2; k++) {
                         index = getColorIndex(j,k,i);
                         sum += (histo[index] || 0);
                     }
                 }
+
                 total += sum;
                 partialsum[i] = total;
             }
@@ -539,59 +551,73 @@ var MMCQ = (function() {
             lookaheadsum[i] = total-d;
         });
         function doCut(color) {
-            var dim1 = color + '1',
-                dim2 = color + '2',
+            var dim1 = color + "1",
+                dim2 = color + "2",
                 left, right, vbox1, vbox2, d2, count2=0;
+
             for (i = vbox[dim1]; i <= vbox[dim2]; i++) {
                 if (partialsum[i] > total / 2) {
                     vbox1 = vbox.copy();
                     vbox2 = vbox.copy();
                     left = i - vbox[dim1];
                     right = vbox[dim2] - i;
-                    if (left <= right)
+
+                    if (left <= right) {
                         d2 = Math.min(vbox[dim2] - 1, ~~(i + right / 2));
-                    else d2 = Math.max(vbox[dim1], ~~(i - 1 - left / 2));
+                    }
+                    else {
+                        d2 = Math.max(vbox[dim1], ~~(i - 1 - left / 2));
+                    }
+
                     // avoid 0-count boxes
-                    while (!partialsum[d2]) d2++;
+                    while (!partialsum[d2]) {
+                        d2++
+                    };
+
                     count2 = lookaheadsum[d2];
-                    while (!count2 && partialsum[d2-1]) count2 = lookaheadsum[--d2];
+
+                    while (!count2 && partialsum[d2-1]) {
+                        count2 = lookaheadsum[--d2];
+                    }
+
                     // set dimensions
                     vbox1[dim2] = d2;
                     vbox2[dim1] = vbox1[dim2] + 1;
-//                    console.log('vbox counts:', vbox.count(), vbox1.count(), vbox2.count());
+
                     return [vbox1, vbox2];
                 }
             }
 
         }
+
         // determine the cut planes
-        return maxw == rw ? doCut('r') :
-            maxw == gw ? doCut('g') :
-            doCut('b');
+        return maxw == rw ? doCut("r") :
+            maxw == gw ? doCut("g") :
+            doCut("b");
     }
 
     function quantize(pixels, maxcolors) {
-        // short-circuit
         if (!pixels.length || maxcolors < 2 || maxcolors > 256) {
-//            console.log('wrong number of maxcolors');
             return false;
         }
 
         // XXX: check color content and convert to grayscale if insufficient
 
-        var histo = getHisto(pixels),
-            histosize = 1 << (3 * sigbits);
+        var histo = getHisto(pixels);
 
         // check that we aren't below maxcolors already
         var nColors = 0;
+
         histo.forEach(function() { nColors++; });
+
         if (nColors <= maxcolors) {
             // XXX: generate the new colors from the histo and return
         }
 
         // get the beginning vbox from the colors
-        var vbox = vboxFromPixels(pixels, histo),
-            pq = new PQueue(function(a,b) { return pv.naturalOrder(a.count(), b.count()); });
+        var vbox = vboxFromPixels(pixels, histo);
+        var pq = new PQueue(function(a,b) { return pv.naturalOrder(a.count(), b.count()); });
+
         pq.push(vbox);
 
         // inner function to do the iteration
@@ -599,30 +625,36 @@ var MMCQ = (function() {
             var ncolors = 1,
                 niters = 0,
                 vbox;
+
             while (niters < maxIterations) {
                 vbox = lh.pop();
+
                 if (!vbox.count())  { /* just put it back */
                     lh.push(vbox);
                     niters++;
                     continue;
                 }
-                // do the cut
+
                 var vboxes = medianCutApply(histo, vbox),
                     vbox1 = vboxes[0],
                     vbox2 = vboxes[1];
 
                 if (!vbox1) {
-//                    console.log("vbox1 not defined; shouldn't happen!");
                     return;
                 }
+
                 lh.push(vbox1);
+
                 if (vbox2) {  /* vbox2 can be null */
                     lh.push(vbox2);
                     ncolors++;
                 }
-                if (ncolors >= target) return;
+
+                if (ncolors >= target) {
+                    return;
+                }
+
                 if (niters++ > maxIterations) {
-//                    console.log("infinite loop; perhaps too few pixels!");
                     return;
                 }
             }
@@ -635,6 +667,7 @@ var MMCQ = (function() {
         var pq2 = new PQueue(function(a,b) {
             return pv.naturalOrder(a.count()*a.volume(), b.count()*b.volume());
         });
+
         while (pq.size()) {
             pq2.push(pq.pop());
         }
@@ -644,6 +677,7 @@ var MMCQ = (function() {
 
         // calculate the actual colors
         var cmap = new CMap();
+
         while (pq2.size()) {
             cmap.push(pq2.pop());
         }
@@ -655,3 +689,93 @@ var MMCQ = (function() {
         quantize: quantize
     };
 })();
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    var filedrop = document.getElementById("filedrop");
+
+    window.addEventListener("show-results", function (event) {
+        var colors = event.detail;
+
+        if (!colors || !colors.length) {
+            document.getElementById("result").innerHTML = "No file input provided.";
+            document.getElementById("result").className = "fail";
+
+            return;
+        }
+
+        // Display Palette in the browser
+        var newRow = document.createElement("div");
+        newRow.className = "palette";
+
+        var colorList = document.createElement("ul");
+
+        for (var i=0; i < colors.length; i++) {
+            var swatch = document.createElement("li");
+
+            var color = colors[i];
+            var colorStyle = "rgb(" + color[0] + "," + color[1] + "," + color[2] + ")";
+
+            swatch.setAttribute("style", "background-color: " + colorStyle);
+
+            var node = document.createTextNode("" + colors[i]);
+            swatch.appendChild(node);
+
+            colorList.appendChild(swatch);
+        }
+
+        newRow.appendChild(colorList);
+        document.getElementById("result").appendChild(newRow);
+    }, false);
+
+
+    filedrop.ondragover = function () {
+        this.classList.add("hover");
+        return false;
+    };
+
+    filedrop.ondragleave = function () {
+        this.classList.remove("hover");
+        return false;
+    };
+
+    filedrop.ondrop = function (event) {
+        if (typeof window.FileReader === "undefined") {
+            alert("The browser does not support file drag & drop.");
+            return;
+        }
+
+        this.classList.remove("hover");
+        event.preventDefault();
+
+        var files = event.dataTransfer.files;
+
+        for (var i = 0; i < files.length; i++) {
+            processFile(files[i]);
+        }
+
+        return false;
+    };
+
+    function processFile(file) {
+        var imageType = /image.*/;
+        var reader = new FileReader();
+
+        reader.readAsDataURL(file);
+
+        if (file.type.match(imageType)) {
+            var colorThief = new ColorThief();
+
+            reader.onload = function (event) {
+                colorThief.getColorFromUrl(event.target.result, function(dominantColors) {
+                    var event = new CustomEvent("show-results", { "detail": dominantColors });
+                    window.dispatchEvent(event);
+                });
+            };
+        }
+        else {
+            alert("File must be a supported image type.");
+        }
+    }
+});
