@@ -22,11 +22,11 @@
       "url": "https://raw.githubusercontent.com/lokesh/color-thief/master/LICENSE/"
     }
   ],
-  "main": "dist/color-thief.min.js",
+  "main": "src/color-thief.js",
   "scripts": {
-    "clean": "rimraf dist/",
+    "clean": "rimraf docs/",
     "start": "parcel src/index.html",
-    "build": "yarn run clean && parcel build src/index.html --no-source-maps"
+    "build": "yarn run clean && parcel build src/index.html --no-source-maps --out-dir docs"
   },
   "devDependencies": {
     "cssnano": "^4.1.10",
