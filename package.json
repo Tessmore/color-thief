@@ -30,6 +30,6 @@
   },
   "devDependencies": {
     "cssnano": "^4.1.10",
-    "rimraf": "^2.6.3"
+    "rimraf": "^3.0.2"
   }
 }
